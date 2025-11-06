@@ -5,7 +5,7 @@ import ApiService from "../services/api";
 
 import { isUserAdmin } from "../adminDetails";
 
-export default function AdminDashboard({ onMovieChange }) {
+export default function AdminDashboard({ onMovieChange, onMovieAdded }) {
   const { user } = useUser();
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -164,8 +164,18 @@ export default function AdminDashboard({ onMovieChange }) {
         alert("Movie updated successfully!");
       } else {
         const result = await ApiService.createMovie(movieData);
-        console.log('✅ Movie created successfully:', result);
-        alert("Movie created successfully!");
+          console.log('✅ Movie created successfully:', result);
+          console.log('✅ Result structure:', Object.keys(result));
+          alert("Movie created successfully!");
+          // Notify the app (and admin) immediately about the new movie
+          try {
+            // Extract the actual movie object from the result
+            const movieToNotify = result.movie || result.data || result;
+            console.log('🔔 Notifying with movie:', movieToNotify);
+            if (onMovieAdded) onMovieAdded(movieToNotify);
+          } catch (notifyErr) {
+            console.warn('onMovieAdded callback failed:', notifyErr);
+          }
       }
       
       resetForm();
@@ -254,7 +264,8 @@ export default function AdminDashboard({ onMovieChange }) {
     
     try {
       const userEmail = user.emailAddresses?.[0]?.emailAddress;
-      const response = await fetch('https://criticscore.onrender.com/api/dev/make-admin', {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || "https://criticscore.onrender.com/";
+      const response = await fetch(`${API_BASE_URL}/api/dev/make-admin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: userEmail })
